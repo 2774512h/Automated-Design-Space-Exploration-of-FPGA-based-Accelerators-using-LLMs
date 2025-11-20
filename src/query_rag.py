@@ -4,12 +4,12 @@ import textwrap
 import chromadb
 from chromadb.utils import embedding_functions
 
+# Connect to existing ChromaDB collection
 def get_collection(
     persist_dir: str = "data/chroma",
     collection_name: str = "textbook",
     model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
 ):
-    #connect to an existing collection with an embedding function
     client = chromadb.PersistentClient(path=persist_dir)
     st_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
         model_name=model_name
@@ -20,45 +20,48 @@ def get_collection(
     )
     return collection
 
-def query_collection(
+def retrieve_context(
     query: str,
-    n_results: int = 5,
-    persist_dir: str = "textbook",
-    collection_name: str = "textbook",
-    model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
+    n_results: int,
+    persist_dir: str,
+    collection_name: str,
+    model_name: str,
 ):
+    # Retrieval function
     collection = get_collection(
         persist_dir=persist_dir,
         collection_name=collection_name,
         model_name=model_name,
     )
 
-    print(f"\nQuery: {query}\n")
+    # Embed query and find n most similar chunks 
     results = collection.query(
         query_texts=[query],
-        n_results = n_results,
+        n_results=n_results,
     )
 
-    #results is a dict with the keys: ids, docs, metadatas, distances
     docs = results["documents"][0]
     ids = results["ids"][0]
     distances = results["distances"][0]
     metadatas = results.get("metadatas", [[]])[0]
-    
-    for rank, (doc_id, doc_text, dist, meta) in enumerate(
-        zip(ids, docs, distances, metadatas), start=1
-    ):
-        print(f"=== Result {rank} ===")
-        print(f"Chunk ID: {doc_id}")
-        if meta:
-            print(f"Metadata: {meta}")
-        print(f"Distance: {dist:.4f}")
-        print("Text:")
-        print(textwrap.fill(doc_text, width=100))
-        print()
+
+    context_items = []
+
+    # Build a list of dictionaries 
+    for doc_id, doc_text, dist, meta in zip(ids, docs, distances, metadatas):
+        context_items.append(
+            {
+                "id": doc_id,
+                "text": doc_text,
+                "distance": dist,
+                "metadata": meta,
+            }
+        )
+    return context_items
+
 def parse_arguments():
     parser = argparse.ArgumentParser(
-        description="Query a ChromaDB collection built from the textbook."
+        description="Query a ChromaDB collection."
     )
     parser.add_argument(
         "--query",
@@ -96,13 +99,19 @@ def parse_arguments():
 
 def main():
     args = parse_arguments()
-    query_collection(
+    
+    context_items=retrieve_context(
         query=args.query,
         n_results=args.n_results,
         persist_dir=args.persist_dir,
         collection_name=args.collection_name,
         model_name=args.model_name,
     )
+    print("\n=== Retrieved Context Chunks ===\n")
+    for i, item in enumerate(context_items, start=1):
+        print(f"--- Chunk {i} (id={item['id']}, distance={item['distance']:.4f}) ---")
+        print(textwrap.fill(item["text"], width=100))
+        print()
 
 
 if __name__ == "__main__":
