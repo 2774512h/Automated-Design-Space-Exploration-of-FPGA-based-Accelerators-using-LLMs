@@ -13,7 +13,11 @@ def baseline_prompt(query: str) -> str:
 
 def context_prompt(query: str, context: str) -> str:
     return(
-        "You are an assistant that answers questions using the provided context.\n\n"
+        "You are an assistant answering questions about the textbook "
+        "'Introduction to Computing: Explorations in Language, Logic, and Machines'. "
+        "Use the CONTEXT to answer the QUESTION. "
+        "Do not repeat the context verbatim. "
+        "Answer concisely in 2-4 sentences."
         f"Context:\n{context}\n\n"
         f"Question:\n{query}\n\n"
         "Answer:"
@@ -25,7 +29,11 @@ def rag_prompt(
     max_context_chars: int = 6000,
 ) -> str: 
     system_instruction = (
-        ""
+    "You are an assistant answering questions about the textbook "
+    "'Introduction to Computing: Explorations in Language, Logic, and Machines'. "
+    "Use the CONTEXT to answer the QUESTION. "
+    "Do not repeat the context verbatim. "
+    "Answer concisely in 2-4 sentences."
     )
     
     context_parts = [] # List of text chunks 

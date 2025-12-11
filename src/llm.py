@@ -34,13 +34,13 @@ def generate_answer(prompt:str, max_new_tokens: int = 256):
     )
     end = time.time()
 
-    # Token IDs to Python String
-    text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
-
     # Count only generated tokens not including the prompt
     prompt_len = inputs["input_ids"].shape[1]
     generated_ids = output_ids[0][prompt_len:]
     num_tokens = generated_ids.shape[0]
+
+    # Token IDs to Python String
+    text = tokenizer.decode(generated_ids, skip_special_tokens=True)
 
     elapsed = max(end - start, 1e-6) # Avoids division by 0
     tps = num_tokens / elapsed 

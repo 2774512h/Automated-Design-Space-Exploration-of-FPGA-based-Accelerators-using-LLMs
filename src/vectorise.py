@@ -24,7 +24,7 @@ def get_texts_from_chunks(chunks: List[Dict], use_field: str = "original_text") 
         if use_field not in record:
             raise KeyError(f"Field '{use_field}' not found in record")
         texts.append(record[use_field])
-        return texts
+    return texts
     
 def embed_texts(
     texts: List[str],

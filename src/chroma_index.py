@@ -52,22 +52,29 @@ def build_chroma_collection(
 
     #prepare data
     ids=[]
-    docs=[]
+    documents=[]
     metadatas=[]
 
     for record in chunks:
         rid = str(record['id'])
         text = record['original_text']
         ids.append(rid)
-        docs.append(text)
+        documents.append(text)
         metadatas.append(
             {
                 'id': record['id']
                 #any metadata fields to be added
             }
         )
-    print(f"Adding {len(ids)} chunks to collection '{collection_name}'...")
-    collection.add(ids=ids, documents=docs, metadatas=metadatas)
+    BATCH_SIZE = 1000
+    for start in range(0,len(documents), BATCH_SIZE):
+        end = start + BATCH_SIZE
+
+        collection.add(
+            ids=ids[start:end],
+            documents=documents[start:end],
+            metadatas=metadatas[start:end],
+        )
     print("Index build complete")
 
 def parse_arguments():
