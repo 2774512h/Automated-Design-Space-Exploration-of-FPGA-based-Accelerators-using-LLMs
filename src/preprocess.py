@@ -10,8 +10,8 @@ nlp = spacy.load("en_core_web_sm")
 if "spacy_chunks" not in nlp.pipe_names:
     nlp.add_pipe("spacy_chunks", last=True, config={
         "chunking_method": "sentence",
-        "chunk_size": 2,
-        "overlap": 1,
+        "chunk_size": 1,
+        "overlap": 0,
         "truncate": False
     })
     
@@ -22,7 +22,8 @@ def load_text(path: str) -> str:
 
 def split_into_sentence_chunks(text:str) -> List[Dict]:
     """
-    Split text into overlapping sentence chunks """
+    Split text into overlapping sentence chunks 
+    """
     doc = nlp(text)
     
     chunks: List[Dict] = []
@@ -33,7 +34,7 @@ def split_into_sentence_chunks(text:str) -> List[Dict]:
         # First and last character to approximate char span
         start_char = chunk[0].start_char
         end_char = chunk[-1].end_char
-
+        
         chunks.append({
             "id" : i,
             "original_text": chunk_text,
@@ -59,31 +60,75 @@ def spacy_pipeline(model_name: str = "en_core_web_sm"):
     """Load spaCy pipeline."""
     return spacy.load(model_name)
 
+def load_docs_from_dir(root: str) -> List[Dict]:
+    """
+    Walk the SECDA docs directory and collect all text-like files.
+
+    We only include files under `root` (docs folder), not README or tutorials.
+    """
+    records: List[Dict] = []
+
+    for dirpath, _, filenames in os.walk(root):
+        for name in filenames:
+            # Only keep markdown / text-like docs
+            if not name.lower().endswith((".md", ".rst", ".txt")):
+                continue
+
+            path = os.path.join(dirpath, name)
+            with open(path, "r", encoding="utf-8") as f:
+                text = f.read()
+
+            # Store relative path so we know which file each chunk came from
+            records.append(
+                {
+                    "file": os.path.relpath(path, root),  # e.g. "usage.md"
+                    "text": text,
+                }
+            )
+
+    return records
+
 
 def preprocess(
     input_path: str,
     output_path: str,
     spacy_model: str = "en_core_web_sm",
 ):
-    print(f"Loading textbook from: {input_path}")
-    text = load_text(input_path)
+    print(f"Loading docs from: {input_path}")
+    doc_files = load_docs_from_dir(input_path)
+    print(f"Found {len(doc_files)} doc files")
 
-    print(f"Splitting text into chunks")
-    chunks = split_into_sentence_chunks(text)
-    print(f"Created {len(chunks)} chunks.")
+    print("Splitting docs into chunks")
+    all_chunks: List[Dict] = []
+    next_id = 0
+
+    for rec in doc_files:
+        file_path = rec["file"]
+        text = rec["text"]
+
+        # Use your existing sentence-based chunker
+        chunks = split_into_sentence_chunks(text)
+
+        for c in chunks:
+            c["id"] = next_id            # GLOBAL unique id across all docs
+            c["file"] = file_path        # which doc this chunk came from
+            next_id += 1
+            all_chunks.append(c)
+
+    print(f"Created {len(all_chunks)} chunks from {len(doc_files)} files.")
 
     print(f"Loading spaCy model: {spacy_model}")
     lemma_nlp = spacy_pipeline(spacy_model)
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-
     print(f"Writing processed chunks to: {output_path}")
 
-    chunk_texts = [c["original_text"] for c in chunks]
+    # Lemmatisation step over ALL chunks
+    chunk_texts = [c["original_text"] for c in all_chunks]
     docs = lemma_nlp.pipe(chunk_texts, batch_size=16)
-    
+
     with open(output_path, "w", encoding="utf-8") as out_f:
-        for chunk, doc in zip(chunks, docs):
+        for chunk, doc in zip(all_chunks, docs):
             lemmas = [
                 token.lemma_.lower()
                 for token in doc
@@ -100,20 +145,21 @@ def preprocess(
     print("Done.")
 
 
+
 def parse_arguments():
     parser = argparse.ArgumentParser(
-        description="Preprocess a CS textbook: chunk + lemmatisation"
+        description="Preprocess SECDA"
     )
     parser.add_argument(
         "--input",
         "-i",
         required=True,
-        help="Path to the raw textbook text file (e.g. data/raw/textbook.txt).",
-    )
+        help="Path to the SECDA directory",
+)
     parser.add_argument(
         "--output",
         "-o",
-        default="data/processed/textbook_chunks.jsonl",
+        default="data/processed/secda_docs_chunks.jsonl",
         help="Path to the output JSONL file.",
     )
     parser.add_argument(

@@ -28,12 +28,12 @@ def rag_prompt(
     context_items,
     max_context_chars: int = 6000,
 ) -> str: 
-    system_instruction = (
-    "You are an assistant answering questions about the textbook "
-    "'Introduction to Computing: Explorations in Language, Logic, and Machines'. "
-    "Use the CONTEXT to answer the QUESTION. "
-    "Do not repeat the context verbatim. "
-    "Answer concisely in 2-4 sentences."
+    system_instruction = system_instruction = (
+        "You are an assistant answering questions about the SECDA-TFLite toolkit. "
+        "Use the CONTEXT, which comes from the docs/ folder in the SECDA-TFLite "
+        "repository, to answer the QUESTION. Do not repeat the context verbatim. "
+        "Base your answer only on the CONTEXT; if it is insufficient, say that "
+        "you do not know. Answer concisely in 2-4 sentences."
     )
     
     context_parts = [] # List of text chunks 
@@ -90,7 +90,7 @@ def parse_arguments():
     parser.add_argument(
         "--collection_name",
         "-c",
-        default="textbook",
+        default="secda_docs",
         help="Chroma collection name (for mode=rag).",
     )
     parser.add_argument(

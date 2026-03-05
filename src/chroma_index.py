@@ -22,7 +22,7 @@ def build_chroma_collection(
         chunks: List[Dict],
         persist_dir: str = "data/chroma",
         collection_name: str = "textbook",
-        model_name: str = "sentnece-transformers/all-MiniLM-L6-v2",
+        model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
 ):
 
     "Create a Chroma collection and add all chunks"
@@ -40,7 +40,7 @@ def build_chroma_collection(
     )
 
     try: 
-        client.delete_collection(name=collection)
+        client.delete_collection(name=collection_name)
         print(f"Deleted existing collection if it existed")
     except Exception:
         pass
@@ -79,13 +79,14 @@ def build_chroma_collection(
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
-        description="Build a ChromaDB index from textbook chunks JSONL."
+        description="Build a ChromaDB index from SECDA docs chunks JSONL."
+
     )
     parser.add_argument(
         "--input",
         "-i",
         required=True,
-        help="Path to the JSONL file with chunks (e.g. data/processed/textbook_chunks.jsonl).",
+        help="Path to the JSONL file with chunks.",
     )
     parser.add_argument(
         "--persist_dir",
@@ -96,7 +97,7 @@ def parse_arguments():
     parser.add_argument(
         "--collection_name",
         "-c",
-        default="textbook",
+        default="secda_docs",
         help="Name of the Chroma collection.",
     )
     parser.add_argument(

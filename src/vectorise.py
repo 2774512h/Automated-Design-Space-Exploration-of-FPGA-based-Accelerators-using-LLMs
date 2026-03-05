@@ -6,6 +6,8 @@ from typing import List, Dict
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
+_model_cache = {}
+
 def load_chunks(path: str) -> List[Dict]:
     
     chunks = []
@@ -33,9 +35,11 @@ def embed_texts(
 ) -> np.ndarray:
     "Embed a list of texts using SentenceTransformer Model"
     "Return a NumPy array of shape (n_texts, embedding_dim)."
-    
-    print(f"Loading embedding model: {model_name}")
-    model = SentenceTransformer(model_name)
+    global _model_cache
+    if model_name not in _model_cache:
+        print(f"Loading embedding model: {model_name}")
+        _model_cache[model_name] = SentenceTransformer(model_name)
+    model = _model_cache[model_name]
 
     print(f"Encoding {len(texts)} chunks")
     embeddings = model.encode(
@@ -125,6 +129,10 @@ def main():
         texts,
         model_name=args.model_name,
         batch_size=32,
+    )
+
+    assert embeddings.shape[0] == len(chunks), (
+        f"Got {embeddings.shape[0]} embeddings for {len(chunks)} chunks."
     )
 
     save_embeddings_and_metadata(

@@ -9,8 +9,10 @@ from chromadb.utils import embedding_functions
 from typing import List, Dict, Any
 
 # Maybe add as param for more modularity?
-CHUNKS_PATH = "data/processed/textbook_chunks.jsonl"
+CHUNKS_PATH = "data/processed/secda_docs_chunks.jsonl"
 LEXICAL_WEIGHT = 1.0
+
+# Maybe look to add retrival_utils later for shared functions
 
 def tokenize(text: str) -> set[str]:
     tokens = re.findall(r"\w+", text.lower())
@@ -41,7 +43,7 @@ CHUNKS_BY_ID: Dict[int, Dict[str, Any]] = {
 # Connect to existing ChromaDB collection
 def get_collection(
     persist_dir: str = "data/chroma",
-    collection_name: str = "textbook",
+    collection_name: str = "secda_docs",
     model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
 ):
     client = chromadb.PersistentClient(path=persist_dir)
@@ -109,7 +111,7 @@ def retrieve_context(
         candidate["lex_score"] = lex_score
         candidate["score"] = sem_score + LEXICAL_WEIGHT * lex_score
 
-    candidates.sort(key=lambda c: c["distance"])
+    candidates.sort(key=lambda c: c["score"], reverse=True)
     top = candidates[:n_results]
 
     # add id-1 and id+1
@@ -159,7 +161,7 @@ def parse_arguments():
     parser.add_argument(
         "--collection_name",
         "-c",
-        default="textbook",
+        default="secda_docs",
         help="Name of the Chroma collection.",
     )
     parser.add_argument(
