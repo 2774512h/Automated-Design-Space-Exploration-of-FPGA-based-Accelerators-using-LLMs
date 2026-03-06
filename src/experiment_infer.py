@@ -13,11 +13,9 @@ def baseline_prompt(query: str) -> str:
 
 def context_prompt(query: str, context: str) -> str:
     return(
-        "You are an assistant answering questions about the textbook "
-        "'Introduction to Computing: Explorations in Language, Logic, and Machines'. "
-        "Use the CONTEXT to answer the QUESTION. "
-        "Do not repeat the context verbatim. "
-        "Answer concisely in 2-4 sentences."
+        "Answer using the provided context when it contains relevant information."
+        "If you use information not present in the context, clearly mark it as general knowledge and keep it high-level."
+        "If the question is about project-specific details and the context doesn’t contain them, say what you’re missing."
         f"Context:\n{context}\n\n"
         f"Question:\n{query}\n\n"
         "Answer:"
@@ -138,13 +136,10 @@ def main():
         raise ValueError(f"Unknown mode: {args.mode}")
 
     # Call the LLM
-    text, num_tokens, elapsed, tps = generate_answer(prompt)
+    text = generate_answer(prompt)
 
     print("\n=== Model Output ===\n")
     print(text)
-
-    print(f"\n[METRICS] mode={args.mode}, tokens={num_tokens}, time={elapsed:.3f}s, tps={tps:.2f}")
-
 
 if __name__ == "__main__":
     main()

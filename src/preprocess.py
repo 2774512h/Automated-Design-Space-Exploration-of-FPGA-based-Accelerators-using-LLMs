@@ -16,7 +16,7 @@ if "spacy_chunks" not in nlp.pipe_names:
     })
     
 def load_text(path: str) -> str:
-    """Load the full textbook as a single string."""
+    """Load as a single string."""
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
 
