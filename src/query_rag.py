@@ -36,9 +36,11 @@ def load_chunks(path: str) -> List[Dict[str, Any]]:
     return chunks
 
 CHUNKS: List[Dict[str, Any]] = load_chunks(CHUNKS_PATH)
-CHUNKS_BY_ID: Dict[int, Dict[str, Any]] = {
-    int(rec["id"]): rec for rec in CHUNKS
-}
+CHUNKS_BY_FILE_AND_ID: Dict[tuple[str, int], Dict[str, Any]] = {}
+for rec in CHUNKS:
+    f = rec.get("file", "unknown")
+    cid = int(rec["id"])
+    CHUNKS_BY_FILE_AND_ID[(f, cid)] = rec
 
 # Connect to existing ChromaDB collection
 def get_collection(
@@ -76,6 +78,7 @@ def retrieve_context(
     results = collection.query(
         query_texts=[query],
         n_results=n_candidates,
+        include=["documents", "distances", "metadatas"],
     )
 
     docs = results["documents"][0]
@@ -87,22 +90,28 @@ def retrieve_context(
 
     # Build a list of dictionaries 
     for doc_id, doc_text, dist, meta in zip(ids, docs, distances, metadatas):
-        # Ideally use the metadata["id"]
-        record_id = meta.get("id") if isinstance(meta, dict) else None
-        # Chroma fall back
-        if record_id is None:
+        meta = meta if isinstance(meta, dict) else {}
+        file_name = meta.get("file", "unknown")
+        chunk_id = meta.get("chunk_id", None)
+
+        # Fallback: parse "file:chunk" if chunk_id missing
+        if chunk_id is None:
             try:
-                record_id = int(doc_id)
+                chunk_id = int(str(doc_id).split(":")[-1])
             except Exception:
-                record_id = doc_id
+                # last resort: skip
+                continue
+
         candidates.append(
             {
-                "id": int(record_id),
+                "file": file_name,
+                "chunk_id": int(chunk_id),
+                "doc_id": doc_id,
                 "text": doc_text,
                 "distance": float(dist),
                 "metadata": meta,
             }
-        )   
+        )
     
     for candidate in candidates:
         sem_score = -candidate["distance"]
@@ -115,24 +124,29 @@ def retrieve_context(
     top = candidates[:n_results]
 
     # add id-1 and id+1
-    selected: Dict[int, Dict[str, Any]] = {}
-    for c in top:
-        selected[c["id"]] = c
+    selected: Dict[tuple[str, int], Dict[str, Any]] = {}
 
-    for cid in list(selected.keys()):
-        for offset in (-1,1):
+    for c in top:
+        key = (c["file"], c["chunk_id"])
+        selected[key] = c
+
+    for (f, cid) in list(selected.keys()):
+        for offset in (-1, 1):
             nid = cid + offset
-            if nid in CHUNKS_BY_ID and nid not in selected:
-                rec = CHUNKS_BY_ID[nid]
-                selected[nid] = {
-                    "id": nid,
+            nkey = (f, nid)
+            if nkey in CHUNKS_BY_FILE_AND_ID and nkey not in selected:
+                rec = CHUNKS_BY_FILE_AND_ID[nkey]
+                selected[nkey] = {
+                    "file": f,
+                    "chunk_id": nid,
+                    "doc_id": f"{f}:{nid}",
                     "text": rec["original_text"],
-                    "distance": selected[cid]["distance"],  # reuse parent distance
+                    "distance": selected[(f, cid)]["distance"],  # reuse parent distance
                     "metadata": rec,
                 }
-    # turn back into a list and sort by distance then id
+
     context_items = list(selected.values())
-    context_items.sort(key=lambda c: (c["distance"], c["id"]))
+    context_items.sort(key=lambda c: (c["distance"], c["file"], c["chunk_id"]))
     return context_items
 
 def parse_arguments():
@@ -185,7 +199,7 @@ def main():
     )
     print("\n=== Retrieved Context Chunks ===\n")
     for i, item in enumerate(context_items, start=1):
-        print(f"--- Chunk {i} (id={item['id']}, distance={item['distance']:.4f}) ---")
+        print(f"--- Chunk {i} (file={item.get('file')}, id={item.get('chunk_id')}, distance={item['distance']:.4f}) ---")
         print(textwrap.fill(item["text"], width=100))
         print()
 

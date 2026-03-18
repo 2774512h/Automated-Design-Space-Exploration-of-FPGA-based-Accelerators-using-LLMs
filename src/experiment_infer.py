@@ -27,7 +27,7 @@ def rag_prompt(
     max_context_chars: int = 6000,
 ) -> str: 
     system_instruction = system_instruction = (
-        "You are an assistant answering questions about the SECDA-TFLite toolkit. "
+        "You are an assistant answering questions about the SECDA design-space-exploration documents."
         "Use the CONTEXT, which comes from the docs/ folder in the SECDA-TFLite "
         "repository, to answer the QUESTION. Do not repeat the context verbatim. "
         "Base your answer only on the CONTEXT; if it is insufficient, say that "
