@@ -1,5 +1,6 @@
-spacy
-sentence-transformers
 chromadb
 numpy
 requests>=2.31.0
+sentence-transformers
+spacy
+streamllit>=1.32.0

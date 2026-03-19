@@ -21,7 +21,10 @@ data/raw/
 data/processed/
 data/index/
 data/chroma/
+data/chroma_secda_v1/
 
 # Logs / misc
 *.log
 .DS_Store
+
+

@@ -21,7 +21,7 @@ def load_chunks(path: str) -> List[Dict]:
 def build_chroma_collection(
         chunks: List[Dict],
         persist_dir: str = "data/chroma",
-        collection_name: str = "textbook",
+        collection_name: str = "secda_docs",
         model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
 ):
 

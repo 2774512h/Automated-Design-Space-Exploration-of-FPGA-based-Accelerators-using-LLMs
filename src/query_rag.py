@@ -12,6 +12,10 @@ from typing import List, Dict, Any
 CHUNKS_PATH = "data/processed/secda_docs_chunks.jsonl"
 LEXICAL_WEIGHT = 1.0
 
+# Lazy caches so Streamlit can render before loading everything
+_CHUNKS: List[Dict[str, Any]] | None = None
+_CHUNKS_BY_FILE_AND_ID: Dict[tuple[str, int], Dict[str, Any]] | None = None
+
 # Maybe look to add retrival_utils later for shared functions
 
 def tokenize(text: str) -> set[str]:
@@ -35,12 +39,22 @@ def load_chunks(path: str) -> List[Dict[str, Any]]:
             chunks.append(json.loads(line))
     return chunks
 
-CHUNKS: List[Dict[str, Any]] = load_chunks(CHUNKS_PATH)
-CHUNKS_BY_FILE_AND_ID: Dict[tuple[str, int], Dict[str, Any]] = {}
-for rec in CHUNKS:
-    f = rec.get("file", "unknown")
-    cid = int(rec["id"])
-    CHUNKS_BY_FILE_AND_ID[(f, cid)] = rec
+def ensure_chunks_loaded(path: str = CHUNKS_PATH) -> None:
+    global _CHUNKS, _CHUNKS_BY_FILE_AND_ID
+
+    if _CHUNKS is not None and _CHUNKS_BY_FILE_AND_ID is not None:
+        return
+
+    chunks = load_chunks(path)
+    chunks_by_file_and_id: Dict[tuple[str, int], Dict[str, Any]] = {}
+
+    for rec in chunks:
+        file_name = rec.get("file", "unknown")
+        chunk_id = int(rec["id"])
+        chunks_by_file_and_id[(file_name, chunk_id)] = rec
+
+    _CHUNKS = chunks
+    _CHUNKS_BY_FILE_AND_ID = chunks_by_file_and_id
 
 # Connect to existing ChromaDB collection
 def get_collection(
@@ -65,6 +79,7 @@ def retrieve_context(
     collection_name: str,
     model_name: str,
 ):
+    ensure_chunks_loaded()
     # Retrieval function
     collection = get_collection(
         persist_dir=persist_dir,
@@ -130,18 +145,22 @@ def retrieve_context(
         key = (c["file"], c["chunk_id"])
         selected[key] = c
 
+    ensure_chunks_loaded()
+
+    assert _CHUNKS_BY_FILE_AND_ID is not None
+
     for (f, cid) in list(selected.keys()):
         for offset in (-1, 1):
             nid = cid + offset
             nkey = (f, nid)
-            if nkey in CHUNKS_BY_FILE_AND_ID and nkey not in selected:
-                rec = CHUNKS_BY_FILE_AND_ID[nkey]
+            if nkey in _CHUNKS_BY_FILE_AND_ID and nkey not in selected:
+                rec = _CHUNKS_BY_FILE_AND_ID[nkey]
                 selected[nkey] = {
                     "file": f,
                     "chunk_id": nid,
                     "doc_id": f"{f}:{nid}",
                     "text": rec["original_text"],
-                    "distance": selected[(f, cid)]["distance"],  # reuse parent distance
+                    "distance": selected[(f, cid)]["distance"],
                     "metadata": rec,
                 }
 
@@ -186,7 +205,6 @@ def parse_arguments():
     )
     return parser.parse_args()
 
-    return context_items_reranked
 def main():
     args = parse_arguments()
     
