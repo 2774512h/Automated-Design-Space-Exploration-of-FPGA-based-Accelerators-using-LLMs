@@ -8,7 +8,6 @@ from chromadb.utils import embedding_functions
 
 from typing import List, Dict, Any
 
-# Maybe add as param for more modularity?
 CHUNKS_PATH = "data/processed/secda_docs_chunks.jsonl"
 LEXICAL_WEIGHT = 1.0
 
@@ -56,10 +55,9 @@ def ensure_chunks_loaded(path: str = CHUNKS_PATH) -> None:
     _CHUNKS = chunks
     _CHUNKS_BY_FILE_AND_ID = chunks_by_file_and_id
 
-# Connect to existing ChromaDB collection
 def get_collection(
-    persist_dir: str = "data/chroma",
-    collection_name: str = "secda_docs",
+    persist_dir: str = "data/chroma_secda",
+    collection_name: str = "secda_docs_v1",
     model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
 ):
     client = chromadb.PersistentClient(path=persist_dir)
@@ -89,7 +87,6 @@ def retrieve_context(
 
     n_candidates = max(30, n_results * 3)
 
-    # Embed query and find n most similar chunks 
     results = collection.query(
         query_texts=[query],
         n_results=n_candidates,
@@ -103,18 +100,15 @@ def retrieve_context(
 
     candidates: List[Dict[str, Any]] = []
 
-    # Build a list of dictionaries 
     for doc_id, doc_text, dist, meta in zip(ids, docs, distances, metadatas):
         meta = meta if isinstance(meta, dict) else {}
         file_name = meta.get("file", "unknown")
         chunk_id = meta.get("chunk_id", None)
 
-        # Fallback: parse "file:chunk" if chunk_id missing
         if chunk_id is None:
             try:
                 chunk_id = int(str(doc_id).split(":")[-1])
             except Exception:
-                # last resort: skip
                 continue
 
         candidates.append(
@@ -188,13 +182,13 @@ def parse_arguments():
     parser.add_argument(
         "--persist_dir",
         "-p",
-        default="data/chroma",
+        default="data/chroma_secda",
         help="Directory where Chroma index is stored.",
     )
     parser.add_argument(
         "--collection_name",
         "-c",
-        default="secda_docs",
+        default="secda_docs_v1",
         help="Name of the Chroma collection.",
     )
     parser.add_argument(

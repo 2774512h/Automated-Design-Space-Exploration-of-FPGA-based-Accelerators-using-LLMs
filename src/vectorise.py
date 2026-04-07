@@ -80,7 +80,7 @@ def save_embeddings_and_metadata(
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
-        description="Vectorise textbook chunks using a sentence embedding model."
+        description="Vectorise chunks using a sentence embedding model."
     )
     parser.add_argument(
         "--input",

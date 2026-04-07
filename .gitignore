@@ -22,6 +22,7 @@ data/processed/
 data/index/
 data/chroma/
 data/chroma_secda_v1/
+*.sqlite3
 
 # Logs / misc
 *.log

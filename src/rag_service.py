@@ -1,14 +1,15 @@
 from __future__ import annotations
 
+import time
 from typing import Any, Dict, List, Optional
 
-from src.llm import generate_answer
-from src.query_rag import retrieve_context
+from llm import generate_answer
+from query_rag import retrieve_context
 
 
 DEFAULT_RETRIEVER_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-DEFAULT_COLLECTION_NAME = "secda_docs"
-DEFAULT_PERSIST_DIR = "data/chroma"
+DEFAULT_COLLECTION_NAME = "secda_docs_v1"
+DEFAULT_PERSIST_DIR = "data/chroma_secda_"
 
 
 PROMPT_PREFIXES = {
@@ -105,12 +106,18 @@ def run_rag_query(
     temperature: float = 0.0,
     prompt_prefix_override: Optional[str] = None,
 ) -> Dict[str, Any]:
+    import time
+
+    total_start = time.perf_counter()
+
     context_items: List[Dict[str, Any]] = []
+    retrieval_latency_seconds = 0.0
 
     if mode == "baseline":
         prompt = baseline_prompt(query, prompt_prefix_override)
 
     elif mode in {"rag_strict", "rag_assisted"}:
+        retrieval_start = time.perf_counter()
         context_items = retrieve_context(
             query=query,
             n_results=n_results,
@@ -118,16 +125,18 @@ def run_rag_query(
             collection_name=collection_name,
             model_name=retriever_model,
         )
+        retrieval_latency_seconds = time.perf_counter() - retrieval_start
+
         prompt = rag_prompt(
             query=query,
             mode=mode,
             context_items=context_items,
             prompt_prefix=prompt_prefix_override,
         )
-
     else:
         raise ValueError(f"Unknown mode: {mode}")
 
+    generation_start = time.perf_counter()
     answer = generate_answer(
         prompt=prompt,
         max_new_tokens=max_new_tokens,
@@ -135,6 +144,11 @@ def run_rag_query(
         model=ollama_model,
         temperature=temperature,
     )
+    generation_latency_seconds = time.perf_counter() - generation_start
+    total_latency_seconds = time.perf_counter() - total_start
+
+    context_char_count = sum(len(item.get("text", "")) for item in context_items)
+    answer_word_count = len(answer.split())
 
     return {
         "mode": mode,
@@ -143,4 +157,9 @@ def run_rag_query(
         "context_items": context_items,
         "raw_context": "",
         "answer": answer,
+        "retrieval_latency_seconds": retrieval_latency_seconds,
+        "generation_latency_seconds": generation_latency_seconds,
+        "total_latency_seconds": total_latency_seconds,
+        "context_char_count": context_char_count,
+        "answer_word_count": answer_word_count,
     }

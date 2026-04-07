@@ -3,4 +3,5 @@ numpy
 requests>=2.31.0
 sentence-transformers
 spacy
-streamllit>=1.32.0
+spacy-chunks==0.0.2
+streamlit>=1.32.0
